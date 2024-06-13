@@ -6,7 +6,10 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-	serv := http.Server{Handler: mux, Addr: ":8080"}
+	fs := http.FileServer(http.Dir("."))
+	mux.Handle("/", fs)
+
+	serv := &http.Server{Handler: mux, Addr: ":8080"}
 	serv.ListenAndServe()
 
 }
