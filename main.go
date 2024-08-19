@@ -7,13 +7,13 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("."))
-	mux.Handle("/", fs)
+	mux.Handle("/app/*", http.StripPrefix("/app", fs))
 
-	mux.HandleFunc("/healthz", func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "text/plain; chartset=utf-8")
-		res.Header().Set("X-Hello-Bootdev", "Showing these being set")
-		res.WriteHeader(200)
-		res.Write([]byte("OK"))
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(200)
+		w.Write([]byte("OK"))
+
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
