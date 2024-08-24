@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -42,6 +43,10 @@ func main() {
 	mux.HandleFunc("/api/reset", func(w http.ResponseWriter, r *http.Request) {
 		apiCfg.fileserverHits = 0
 		w.WriteHeader(200)
+	})
+
+	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		decoder := json.NewDecoder(r.Body)
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
