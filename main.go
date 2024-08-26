@@ -45,56 +45,30 @@ func main() {
 		w.WriteHeader(200)
 	})
 
-	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
 			Body string `json:"body"`
 		}
 
-		type ErrResp struct {
-			Error string `json:"error"`
-		}
-		type ValidResp struct {
-			Valid bool `json:"valid"`
+		type response struct {
+			Valid bool   `json:"valid,omitempty"`
+			Error string `json:"error,omitempty"`
 		}
 
-		decoder := json.NewDecoder(r.Body)
-		params := parameters{}
-		err := decoder.Decode(&params)
-		fmt.Println(params.Body)
-		if err != nil {
-			errRes := ErrResp{
-				Error: "Something went wrong",
-			}
-			dat, err := json.Marshal(errRes)
-			if err == nil {
-				w.Write(dat)
-			}
-			w.WriteHeader(500)
+		var params parameters
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			http.Error(w, `{"error": "Something went wrong"}`, http.StatusInternalServerError)
 			return
-
 		}
 
 		if len(params.Body) > 10 {
-			errRes := ErrResp{
-				Error: "Chirp is too long",
-			}
-			dat, err := json.Marshal(errRes)
-			if err == nil {
-				w.Write(dat)
-			}
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response{Error: "Chirp is too long"})
 			return
 		}
 
-		validResp := ValidResp{
-			Valid: true,
-		}
-		dat, err := json.Marshal(validResp)
-		if err == nil {
-			w.Write(dat)
-		}
-		w.WriteHeader(200)
-
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response{Valid: true})
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
