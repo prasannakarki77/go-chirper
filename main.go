@@ -46,7 +46,55 @@ func main() {
 	})
 
 	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		type parameters struct {
+			Body string `json:"body"`
+		}
+
+		type ErrResp struct {
+			Error string `json:"error"`
+		}
+		type ValidResp struct {
+			Valid bool `json:"valid"`
+		}
+
 		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		fmt.Println(params.Body)
+		if err != nil {
+			errRes := ErrResp{
+				Error: "Something went wrong",
+			}
+			dat, err := json.Marshal(errRes)
+			if err == nil {
+				w.Write(dat)
+			}
+			w.WriteHeader(500)
+			return
+
+		}
+
+		if len(params.Body) > 10 {
+			errRes := ErrResp{
+				Error: "Chirp is too long",
+			}
+			dat, err := json.Marshal(errRes)
+			if err == nil {
+				w.Write(dat)
+			}
+			w.WriteHeader(400)
+			return
+		}
+
+		validResp := ValidResp{
+			Valid: true,
+		}
+		dat, err := json.Marshal(validResp)
+		if err == nil {
+			w.Write(dat)
+		}
+		w.WriteHeader(200)
+
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
