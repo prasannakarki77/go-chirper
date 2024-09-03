@@ -4,68 +4,83 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 )
 
 type apiConfig struct {
-	fileserverHits uint64
+	fileserverHits int
+}
+
+type ErrorRes struct {
+	Error string `json:"error"`
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddUint64(&cfg.fileserverHits, 1)
+		cfg.fileserverHits = cfg.fileserverHits + 1
 		next.ServeHTTP(w, r)
 	})
+}
+
+func respondWithError(w http.ResponseWriter, code int, msg string) {
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(ErrorRes{Error: msg})
 }
 
 func main() {
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("."))
 
-	apiCfg := &apiConfig{}
+	apiCfg := &apiConfig{
+		fileserverHits: 0,
+	}
 
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", fs)))
+	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", fs)))
 
-	mux.HandleFunc("/api/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(200)
 		w.Write([]byte("OK"))
+
 	})
 
-	mux.HandleFunc("/admin/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>", atomic.LoadUint64(&apiCfg.fileserverHits))
+	mux.HandleFunc("GET /admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(200)
+		w.Write([]byte(fmt.Sprintf("<html><body><h1>Welcome, Chirpy Admin</h1>   <p>Chirpy has been visited %d times!</p></body></html>", apiCfg.fileserverHits)))
 	})
 
 	mux.HandleFunc("/api/reset", func(w http.ResponseWriter, r *http.Request) {
-		atomic.StoreUint64(&apiCfg.fileserverHits, 0)
-		w.WriteHeader(http.StatusOK)
+		apiCfg.fileserverHits = 0
+		w.WriteHeader(200)
 	})
 
 	mux.HandleFunc("/api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
-		var params struct {
+		type parameters struct {
 			Body string `json:"body"`
 		}
+
+		type response struct {
+			Valid bool   `json:"valid,omitempty"`
+			Error string `json:"error,omitempty"`
+		}
+
+		var params parameters
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-			http.Error(w, `{"error": "Invalid request payload"}`, http.StatusBadRequest)
+			respondWithError(w, 500, "Something went wrong")
 			return
 		}
 
-		resp := struct {
-			Valid bool   `json:"valid,omitempty"`
-			Error string `json:"error,omitempty"`
-		}{Valid: len(params.Body) <= 10}
-
-		if !resp.Valid {
-			resp.Error = "Chirp is too long"
+		if len(params.Body) > 140 {
 			w.WriteHeader(http.StatusBadRequest)
-		} else {
-			w.WriteHeader(http.StatusOK)
+			respondWithError(w, 400, "Chirp is too long")
+			return
 		}
 
-		json.NewEncoder(w).Encode(resp)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response{Valid: true})
 	})
 
-	http.ListenAndServe(":8080", mux)
+	serv := &http.Server{Handler: mux, Addr: ":8080"}
+	serv.ListenAndServe()
+
 }
