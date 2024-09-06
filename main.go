@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type apiConfig struct {
@@ -12,6 +13,12 @@ type apiConfig struct {
 
 type ErrorRes struct {
 	Error string `json:"error"`
+}
+
+var profaneWords = []string{
+	"kerfuffle",
+	"sharbert",
+	"fornax",
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -24,6 +31,26 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 func respondWithError(w http.ResponseWriter, code int, msg string) {
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(ErrorRes{Error: msg})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(response)
+}
+
+func replaceProfaneWords(text string) string {
+	words := strings.Split(text, " ")
+	for i, word := range words {
+		cleanWord := strings.ToLower(strings.Trim(word, ".,!?"))
+		for _, badWord := range profaneWords {
+			if cleanWord == badWord {
+				words[i] = "****"
+			}
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func main() {
@@ -76,8 +103,12 @@ func main() {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response{Valid: true})
+		cleanedBody := replaceProfaneWords(params.Body)
+
+		res := map[string]string{
+			"cleaned_body": cleanedBody,
+		}
+		respondWithJSON(w, http.StatusOK, res)
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
