@@ -80,7 +80,21 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 		body: body,
 	}
 
+	if dbVal.Chirps == nil {
+		dbVal.Chirps = make(map[int]Chirp)
+	}
 	dbVal.Chirps[length] = chirp
+
+	updatedFileVal, err := json.Marshal(dbVal)
+
+	if err != nil {
+		return Chirp{}, err
+	}
+
+	err = os.WriteFile(db.path, updatedFileVal, 0644)
+	if err != nil {
+		return Chirp{}, nil
+	}
 
 	return chirp, nil
 
