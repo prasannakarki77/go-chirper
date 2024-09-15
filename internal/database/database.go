@@ -99,3 +99,41 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return chirp, nil
 
 }
+
+// ensureDB creates a new database file if it doesn't exist
+func (db *DB) ensureDB() error {
+	_, err := os.Stat(db.path)
+
+	if err != nil {
+		NewDB(db.path)
+		return err
+	}
+	return nil
+}
+
+// loadDB reads the database file into memory
+func (db *DB) loadDB() (DBStructure, error) {
+	var dbVal DBStructure
+
+	fileVal, err := os.ReadFile(db.path)
+
+	if err != nil {
+		return DBStructure{}, err
+	}
+	err = json.Unmarshal(fileVal, &dbVal)
+	if err != nil {
+		return DBStructure{}, err
+	}
+	return dbVal, nil
+}
+
+// writeDB writes the database file to disk
+func (db *DB) writeDB(dbStructure DBStructure) error {
+	updatedFileVal, err := json.Marshal(dbStructure)
+	err = os.WriteFile(db.path, updatedFileVal, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
