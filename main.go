@@ -60,7 +60,6 @@ func main() {
 	apiCfg := &apiConfig{
 		fileserverHits: 0,
 	}
-
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", fs)))
 
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -84,11 +83,6 @@ func main() {
 	mux.HandleFunc("/api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
 			Body string `json:"body"`
-		}
-
-		type response struct {
-			Valid bool   `json:"valid,omitempty"`
-			Error string `json:"error,omitempty"`
 		}
 
 		var params parameters
