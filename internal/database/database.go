@@ -2,7 +2,6 @@ package database
 
 import (
 	"encoding/json"
-	"io"
 	"os"
 	"sync"
 )
@@ -52,22 +51,13 @@ func NewDB(path string) (*DB, error) {
 func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
-
-	file, err := os.Open(db.path)
-
-	if err != nil {
-		return Chirp{}, err
-	}
-	defer file.Close()
-
-	var dbVal DBStructure
-
-	fileVal, err := io.ReadAll(file)
+	err := db.ensureDB()
 
 	if err != nil {
 		return Chirp{}, err
 	}
-	err = json.Unmarshal(fileVal, &dbVal)
+
+	dbVal, err := db.loadDB()
 
 	if err != nil {
 		return Chirp{}, err
@@ -85,13 +75,8 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 	dbVal.Chirps[length] = chirp
 
-	updatedFileVal, err := json.Marshal(dbVal)
+	err = db.writeDB(dbVal)
 
-	if err != nil {
-		return Chirp{}, err
-	}
-
-	err = os.WriteFile(db.path, updatedFileVal, 0644)
 	if err != nil {
 		return Chirp{}, nil
 	}
@@ -116,7 +101,6 @@ func (db *DB) loadDB() (DBStructure, error) {
 	var dbVal DBStructure
 
 	fileVal, err := os.ReadFile(db.path)
-
 	if err != nil {
 		return DBStructure{}, err
 	}
@@ -130,6 +114,9 @@ func (db *DB) loadDB() (DBStructure, error) {
 // writeDB writes the database file to disk
 func (db *DB) writeDB(dbStructure DBStructure) error {
 	updatedFileVal, err := json.Marshal(dbStructure)
+	if err != nil {
+		return err
+	}
 	err = os.WriteFile(db.path, updatedFileVal, 0644)
 	if err != nil {
 		return err
