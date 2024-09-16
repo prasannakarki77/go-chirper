@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/prasannakarki77/go-chirper/internal/database"
 )
 
 type apiConfig struct {
@@ -60,6 +62,13 @@ func main() {
 	apiCfg := &apiConfig{
 		fileserverHits: 0,
 	}
+	db, err := database.NewDB("database.json")
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", fs)))
 
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +89,7 @@ func main() {
 		w.WriteHeader(200)
 	})
 
-	mux.HandleFunc("/api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/chirps", func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
 			Body string `json:"body"`
 		}
@@ -97,12 +106,16 @@ func main() {
 			return
 		}
 
-		cleanedBody := replaceProfaneWords(params.Body)
+		// cleanedBody := replaceProfaneWords(params.Body)s
 
-		res := map[string]string{
-			"cleaned_body": cleanedBody,
+		chirp, err := db.CreateChirp(params.Body)
+
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, err.Error())
+			return
 		}
-		respondWithJSON(w, http.StatusOK, res)
+
+		respondWithJSON(w, http.StatusOK, chirp)
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
