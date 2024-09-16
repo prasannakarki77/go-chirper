@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -64,6 +65,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 
 	length := len(dbVal.Chirps)
+	fmt.Println(length)
 
 	chirp := Chirp{
 		id:   length + 1,
@@ -123,4 +125,21 @@ func (db *DB) writeDB(dbStructure DBStructure) error {
 	}
 
 	return nil
+}
+
+// GetChirps returns all chirps in the database
+func (db *DB) GetChirps() ([]Chirp, error) {
+	dbVal, err := db.loadDB()
+	if err != nil {
+		return []Chirp{}, err
+	}
+
+	result := []Chirp{}
+
+	for i := 0; i < len(dbVal.Chirps); i++ {
+		result = append(result, dbVal.Chirps[i+1])
+	}
+
+	return result, nil
+
 }
