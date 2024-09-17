@@ -13,8 +13,8 @@ type DB struct {
 }
 
 type Chirp struct {
-	id   int
-	body string
+	Id   int    `json:"id"`
+	Body string `json:"body"`
 }
 
 type DBStructure struct {
@@ -53,7 +53,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 	err := db.ensureDB()
-
+	fmt.Println(body)
 	if err != nil {
 		return Chirp{}, err
 	}
@@ -68,14 +68,15 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	fmt.Println(length)
 
 	chirp := Chirp{
-		id:   length + 1,
-		body: body,
+		Id:   length + 1,
+		Body: body,
 	}
-
+	fmt.Println(dbVal)
 	if dbVal.Chirps == nil {
 		dbVal.Chirps = make(map[int]Chirp)
 	}
-	dbVal.Chirps[length] = chirp
+	dbVal.Chirps[length+1] = chirp
+	fmt.Println(dbVal)
 
 	err = db.writeDB(dbVal)
 
@@ -103,8 +104,13 @@ func (db *DB) loadDB() (DBStructure, error) {
 	var dbVal DBStructure
 
 	fileVal, err := os.ReadFile(db.path)
+
 	if err != nil {
 		return DBStructure{}, err
+	}
+
+	if len(fileVal) <= 0 {
+		return dbVal, nil
 	}
 	err = json.Unmarshal(fileVal, &dbVal)
 	if err != nil {

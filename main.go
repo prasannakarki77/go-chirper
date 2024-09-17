@@ -106,16 +106,16 @@ func main() {
 			return
 		}
 
-		// cleanedBody := replaceProfaneWords(params.Body)s
+		cleanedBody := replaceProfaneWords(params.Body)
 
-		chirp, err := db.CreateChirp(params.Body)
+		chirp, err := db.CreateChirp(cleanedBody)
 
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		respondWithJSON(w, http.StatusOK, chirp)
+		respondWithJSON(w, http.StatusCreated, chirp)
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
