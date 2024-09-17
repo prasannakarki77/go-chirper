@@ -118,6 +118,18 @@ func main() {
 		respondWithJSON(w, http.StatusCreated, chirp)
 	})
 
+	mux.HandleFunc("GET /api/chirps", func(w http.ResponseWriter, r *http.Request) {
+
+		chirps, err := db.GetChirps()
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			respondWithError(w, 400, "failed")
+		}
+		respondWithJSON(w, http.StatusOK, chirps)
+
+	})
+
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
 	serv.ListenAndServe()
 
