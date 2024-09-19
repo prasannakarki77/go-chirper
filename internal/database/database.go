@@ -149,3 +149,17 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return result, nil
 
 }
+
+func (db *DB) GetChirpById(id int) (Chirp, error) {
+	dbVal, err := db.loadDB()
+	if err != nil {
+		return Chirp{}, err
+	}
+
+	chirp, ok := dbVal.Chirps[id]
+	if !ok {
+		return Chirp{}, fmt.Errorf("chirp with ID %d not found", id)
+	}
+
+	return chirp, nil
+}

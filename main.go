@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/prasannakarki77/go-chirper/internal/database"
@@ -129,7 +130,25 @@ func main() {
 		respondWithJSON(w, http.StatusOK, chirps)
 
 	})
+	mux.HandleFunc("/api/chirps/{chirpId}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("chirpId")
 
+		chirpId, err := strconv.Atoi(id)
+
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+			return
+		}
+
+		// Fetch the chirp from the database using the chirpId
+		chirp, err := db.GetChirpById(chirpId)
+		if err != nil {
+			respondWithError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+
+		respondWithJSON(w, http.StatusOK, chirp)
+	})
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
 	serv.ListenAndServe()
 
