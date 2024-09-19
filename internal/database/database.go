@@ -19,6 +19,12 @@ type Chirp struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
+}
+
+type User struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
 }
 
 // Creates new DB connnection and DB file if it doesn't exists
@@ -162,4 +168,41 @@ func (db *DB) GetChirpById(id int) (Chirp, error) {
 	}
 
 	return chirp, nil
+}
+
+func (db *DB) CreateUser(email string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+	err := db.ensureDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	dbVal, err := db.loadDB()
+
+	if err != nil {
+		return User{}, err
+	}
+
+	length := len(dbVal.Users)
+	fmt.Println(length)
+
+	user := User{
+		Id:    length + 1,
+		Email: email,
+	}
+
+	if dbVal.Users == nil {
+		dbVal.Users = make(map[int]User)
+	}
+	dbVal.Users[length+1] = user
+	fmt.Println(dbVal)
+
+	err = db.writeDB(dbVal)
+
+	if err != nil {
+		return User{}, nil
+	}
+
+	return user, nil
 }
