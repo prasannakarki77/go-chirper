@@ -149,6 +149,29 @@ func main() {
 
 		respondWithJSON(w, http.StatusOK, chirp)
 	})
+
+	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
+
+		type Params struct {
+			Email string `json:"email"`
+		}
+
+		var params Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			respondWithError(w, 500, "Something went wrong")
+			return
+		}
+
+		user, err := db.CreateUser(params.Email)
+
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		respondWithJSON(w, http.StatusOK, user)
+	})
+
 	serv := &http.Server{Handler: mux, Addr: ":8080"}
 	serv.ListenAndServe()
 
