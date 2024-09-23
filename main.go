@@ -153,7 +153,8 @@ func main() {
 	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
 
 		type Params struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}
 
 		var params Params
@@ -162,10 +163,33 @@ func main() {
 			return
 		}
 
-		user, err := db.CreateUser(params.Email)
+		user, err := db.CreateUser(params.Email, params.Password)
 
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		respondWithJSON(w, http.StatusOK, user)
+	})
+
+	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+
+		type Params struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		var params Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			respondWithError(w, 500, "Something went wrong")
+			return
+		}
+
+		user, err := db.LoginUser(params.Email, params.Password)
+
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
