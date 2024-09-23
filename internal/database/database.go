@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
@@ -23,6 +25,12 @@ type DBStructure struct {
 }
 
 type User struct {
+	Id       int    `json:"id"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UserRes struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
 }
@@ -170,26 +178,32 @@ func (db *DB) GetChirpById(id int) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email string, password string) (UserRes, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 	err := db.ensureDB()
 	if err != nil {
-		return User{}, err
+		return UserRes{}, err
 	}
 
 	dbVal, err := db.loadDB()
 
 	if err != nil {
-		return User{}, err
+		return UserRes{}, err
+	}
+
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+
+	if err != nil {
+		return UserRes{}, err
 	}
 
 	length := len(dbVal.Users)
-	fmt.Println(length)
 
 	user := User{
-		Id:    length + 1,
-		Email: email,
+		Id:       length + 1,
+		Email:    email,
+		Password: string(hashedPass),
 	}
 
 	if dbVal.Users == nil {
@@ -201,8 +215,40 @@ func (db *DB) CreateUser(email string) (User, error) {
 	err = db.writeDB(dbVal)
 
 	if err != nil {
-		return User{}, nil
+		return UserRes{}, err
 	}
 
-	return user, nil
+	return UserRes{Id: length + 1,
+		Email: email}, nil
+}
+
+func (db *DB) LoginUser(email string, password string) (UserRes, error) {
+
+	dbVal, err := db.loadDB()
+	if err != nil {
+		return UserRes{}, err
+	}
+
+	var foundUser User
+	for _, user := range dbVal.Users {
+		if user.Email == email {
+			foundUser = user
+			break
+		}
+	}
+
+	if foundUser.Email == "" {
+		return UserRes{}, fmt.Errorf("user not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(password))
+
+	if err != nil {
+		return UserRes{}, fmt.Errorf("incorrect password")
+	}
+
+	return UserRes{
+		Id:    foundUser.Id,
+		Email: foundUser.Email,
+	}, nil
 }
