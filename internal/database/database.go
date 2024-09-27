@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/prasannakarki77/go-chirper/internal/auth"
 )
 
 type DB struct {
@@ -192,7 +192,7 @@ func (db *DB) CreateUser(email string, password string) (UserRes, error) {
 		return UserRes{}, err
 	}
 
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	hashedPass, err := auth.HashPassword(password)
 
 	if err != nil {
 		return UserRes{}, err
@@ -241,7 +241,7 @@ func (db *DB) LoginUser(email string, password string) (UserRes, error) {
 		return UserRes{}, fmt.Errorf("user not found")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(password))
+	err = auth.CheckPasswordHash(password, foundUser.Password)
 
 	if err != nil {
 		return UserRes{}, fmt.Errorf("incorrect password")
