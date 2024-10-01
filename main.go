@@ -3,15 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/prasannakarki77/go-chirper/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits int
+	token          string
 }
 
 type ErrorRes struct {
@@ -59,9 +63,21 @@ func replaceProfaneWords(text string) string {
 func main() {
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("."))
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file:", err)
+		log.Println("Falling back to OS environment variables")
+	}
 
+	// Get token from environment
+	token := os.Getenv("TOKEN")
+	if token == "" {
+		log.Fatal("TOKEN environment variable not set")
+	}
+	fmt.Println("token:", token)
 	apiCfg := &apiConfig{
 		fileserverHits: 0,
+		token:          token,
 	}
 	db, err := database.NewDB("database.json")
 
@@ -176,8 +192,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 
 		type Params struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
+			Email            string `json:"email"`
+			Password         string `json:"password"`
+			ExpiresInSeconds string `json:"expires_in_seconds"`
 		}
 
 		var params Params
@@ -192,8 +209,10 @@ func main() {
 			respondWithError(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-
-		respondWithJSON(w, http.StatusOK, user)
+		respondWithJSON(w, http.StatusOK, map[string]interface{}{
+			"user":  user,
+			"token": token,
+		})
 	})
 
 	serv := &http.Server{Handler: mux, Addr: ":8080"}

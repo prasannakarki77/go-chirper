@@ -33,6 +33,7 @@ type User struct {
 type UserRes struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 // Creates new DB connnection and DB file if it doesn't exists
@@ -67,7 +68,6 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 	err := db.ensureDB()
-	fmt.Println(body)
 	if err != nil {
 		return Chirp{}, err
 	}
@@ -79,18 +79,15 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 
 	length := len(dbVal.Chirps)
-	fmt.Println(length)
 
 	chirp := Chirp{
 		Id:   length + 1,
 		Body: body,
 	}
-	fmt.Println(dbVal)
 	if dbVal.Chirps == nil {
 		dbVal.Chirps = make(map[int]Chirp)
 	}
 	dbVal.Chirps[length+1] = chirp
-	fmt.Println(dbVal)
 
 	err = db.writeDB(dbVal)
 
@@ -210,7 +207,6 @@ func (db *DB) CreateUser(email string, password string) (UserRes, error) {
 		dbVal.Users = make(map[int]User)
 	}
 	dbVal.Users[length+1] = user
-	fmt.Println(dbVal)
 
 	err = db.writeDB(dbVal)
 
